@@ -10,7 +10,6 @@
     const QUESTIONS_TAG = 'QUESTIONS';
 
     // CONFIGURATIONS
-    const CHECK_INTERVAL = 1000;
     const INTERVIEW_FORM_NAME = '[SC]';
 
     // SELECTORS
@@ -30,52 +29,51 @@
     const CLASS_BUTTON_PRIMARY = 'c-button__appearance--primary';
     const CLASS_BUTTON_SMALL = 'c-button__size--small';
 
-    // DATA
-    const state = [];
-    let applied = false;
     let level;
+    let questionsState = [];
 
     /**
      * Init the script
      */
-    function init () {
-        // At start if on correct page and not yet applied
-        if (isOnInterviewPage() && !applied) {
-            level = getLevel();
+    function update() {
+        if(!isOnInterviewPage()) return;
 
-            addFullscreenButton();
-            const questions = document.querySelectorAll(SELECTOR_QUESTIONS);
-            questions.forEach(prepareQuestion);
+        addFullscreenButton();
 
+        const newLevel = getLevel();
+        const levelChanged = newLevel !== level;
+        level = newLevel;
+
+        if(hasDescriptionTags()) {
+            setQuestions();
+        } else if(levelChanged) {
+            questionsState.forEach(item => setEchelle(item));
+        }
+    }
+
+    function setQuestions() {
+        const state = [];
+        const questions = document.querySelectorAll(SELECTOR_QUESTIONS);
+        questions.forEach((question) => prepareQuestion(question, state));
+        if(state.length !== 0) {
+            questionsState = state;
             state.forEach((item) => {
                 setDescription(item);
-                setQuestions(item);
+                setQuestion(item);
                 setEchelle(item);
             });
-
-            applied = state.length > 0;
-        }
-
-        // On level update if on correct page
-        if(isOnInterviewPage() && applied && level !== getLevel()) {
-            level = getLevel();
-            state.forEach(setEchelle);
-        }
-
-        // Reset if on wrong page
-        if(!isOnInterviewPage()) {
-            applied = false;
         }
     }
 
     /**
      * Prepare the question data to be applied
      * @param question
+     * @param state
      */
-    function prepareQuestion(question) {
+    function prepareQuestion(question, state) {
         const questionDetail = question.querySelector(SELECTOR_QUESTION_DETAIL);
 
-        if(questionDetail && questionDetail.innerText) {
+        if(questionDetail && questionDetail.innerText && questionDetail.innerText.includes('[DESCRIPTION]')) {
             state.push({
                 element: question,
                 elementDetail: questionDetail,
@@ -106,7 +104,7 @@
      * Set the question button/icon and tooltip
      * @param item
      */
-    function setQuestions (item) {
+    function setQuestion (item) {
         if(item.questions && item.questions !== '') {
             const questionTitle = item.element.querySelector(SELECTOR_QUESTION_TITLE);
             const questionButton = document.createElement('button');
@@ -195,6 +193,11 @@
         return document.querySelector(SELECTOR_CHECKED_LEVEL)?.parentElement?.innerText?.toLowerCase() ?? 'generic';
     }
 
+    function hasDescriptionTags() {
+        return Array.from(document.querySelectorAll(SELECTOR_QUESTION_DETAIL))
+            .some(el => el.innerText.includes(`[${DESCRIPTION_TAG}]`));
+    }
+
     function extract (input, tag) {
         const regex = new RegExp(`\\[${tag}\\]([\\s\\S]*?)\\[\\/${tag}\\]`);
         const match = input.match(regex);
@@ -212,7 +215,27 @@
 
     // -------------------------------------------
 
-    setInterval(() => {
-        init();
-    }, CHECK_INTERVAL);
+    function observeModal(modal) {
+        const modalObserver = new MutationObserver(update);
+
+        modalObserver.observe(modal, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+
+    const observer = new MutationObserver((mutations, obs) => {
+        const modal = document.querySelector(SELECTOR_SIDEBAR);
+
+        if (modal) {
+            observeModal(modal);
+        }
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
 })();
