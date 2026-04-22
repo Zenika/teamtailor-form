@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Teamtailor Form",
   "description": "Form formatting to customize questions",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "author": "Antoine Le Chapelain",
   "homepage_url": "https://github.com/alechapelain",
   "content_scripts": [{
